@@ -1,13 +1,3 @@
----
-title: Say It Better
-emoji: 🗣️
-colorFrom: yellow
-colorTo: red
-sdk: streamlit
-app_file: app.py
-pinned: false
----
-
 # Say It Better / 嘴替工作室
 
 Say It Better turns a rough meaning into three concise, natural, and complete
@@ -20,7 +10,13 @@ versions for a selected style, audience, and Chinese or English output.
 
 ## Live App
 
-The public GitHub and Hugging Face links will be added after the verified deployment.
+- [GitHub repository](https://github.com/YongrongLu/say-it-better)
+- Streamlit Community Cloud link: add the verified `https://...streamlit.app`
+  URL here after deployment.
+
+The course staff approved Streamlit Community Cloud for this challenge after
+Hugging Face removed its free native Streamlit SDK. This repository is the
+source used by the deployed app.
 
 ## Features
 
@@ -49,7 +45,7 @@ example value with that token:
 
 ```text
 LITELLM_TOKEN=replace_with_your_duke_gateway_token
-LITELLM_MODEL=GPT 4.1
+LITELLM_MODEL=gpt-5.6-sol
 ```
 
 The app uses Duke's OpenAI-compatible endpoint at
@@ -79,11 +75,25 @@ Automated tests use mocked gateway responses and do not spend API credits:
 python -m pytest -v
 ```
 
-## Hugging Face Spaces
+## Streamlit Community Cloud
 
-Create a `LITELLM_TOKEN` Space Secret. Do not add it as a public Variable.
-`LITELLM_MODEL` is optional; without it, the app uses `GPT 4.1`.
-The Space repository must contain the same files and README as GitHub.
+Deploy `app.py` from the `main` branch of this GitHub repository. In the
+deployment form's **Advanced settings**, keep Python 3.12 and add these root-level
+secrets in TOML format:
+
+```toml
+LITELLM_TOKEN = "paste_your_real_duke_gateway_token_here"
+LITELLM_MODEL = "gpt-5.6-sol"
+```
+
+Never put the real token in this README, `.env.example`, source code, or Git
+history. Streamlit exposes root-level secrets as environment variables, so the
+same API layer works locally and in Community Cloud.
+
+For the complete click-by-click workflow, see
+[`docs/STREAMLIT_DEPLOYMENT_AND_SUBMISSION_GUIDE.md`](docs/STREAMLIT_DEPLOYMENT_AND_SUBMISSION_GUIDE.md).
+For the 60–120 second recording script, see
+[`docs/VIDEO_DEMO_SCRIPT.md`](docs/VIDEO_DEMO_SCRIPT.md).
 
 ## Safety and Privacy
 
@@ -96,7 +106,8 @@ The Space repository must contain the same files and README as GitHub.
 
 ## Troubleshooting
 
-- **Missing token:** Confirm `.env` locally or `LITELLM_TOKEN` in Space Secrets.
+- **Missing token:** Confirm `.env` locally or `LITELLM_TOKEN` in Streamlit
+  Community Cloud secrets.
 - **Unauthorized token:** Verify that the Duke Gateway token is active and copied correctly.
 - **Rate or usage limit:** Check the Duke AI Dashboard and retry later.
 - **Timeout or connection failure:** Check the network and retry.

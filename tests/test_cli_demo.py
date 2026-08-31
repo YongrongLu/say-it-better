@@ -222,7 +222,9 @@ def test_rewrite_text_requires_duke_token_when_constructing_client(monkeypatch):
     monkeypatch.setattr("cli_demo.load_dotenv", lambda: None)
     monkeypatch.delenv("LITELLM_TOKEN", raising=False)
 
-    with pytest.raises(RewriteError, match="LITELLM_TOKEN"):
+    with pytest.raises(
+        RewriteError, match="Streamlit Community Cloud secrets"
+    ):
         rewrite_text("Hello", "polite", "general", "en")
 
 

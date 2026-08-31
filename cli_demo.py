@@ -139,7 +139,8 @@ def rewrite_text(
         token = os.getenv("LITELLM_TOKEN", "").strip()
         if not token:
             raise RewriteError(
-                "LITELLM_TOKEN is missing. Add it to .env locally or to the Space Secrets."
+                "LITELLM_TOKEN is missing. Add it to .env locally or to "
+                "Streamlit Community Cloud secrets."
             )
         client = OpenAI(api_key=token, base_url=DUKE_GATEWAY_URL)
 
