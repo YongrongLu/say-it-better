@@ -40,7 +40,8 @@ LANGUAGE_LABELS = {
 }
 
 VARIANT_KINDS = ("concise", "natural", "complete")
-DEFAULT_MODEL = "gpt-5.6-luna"
+DUKE_GATEWAY_URL = "https://litellm.oit.duke.edu/v1"
+DEFAULT_MODEL = "GPT 4.1"
 
 
 class RewriteError(Exception):
@@ -120,7 +121,7 @@ def parse_variants(output_text: str) -> list[dict[str, str | int]]:
 
 
 def get_model_name() -> str:
-    return os.getenv("OPENAI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+    return os.getenv("LITELLM_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
 
 
 def rewrite_text(
@@ -135,31 +136,36 @@ def rewrite_text(
 
     if client is None:
         load_dotenv()
-        api_key = os.getenv("OPENAI_API_KEY", "").strip()
-        if not api_key:
+        token = os.getenv("LITELLM_TOKEN", "").strip()
+        if not token:
             raise RewriteError(
-                "OPENAI_API_KEY is missing. Add it to .env locally or to the Space Secrets."
+                "LITELLM_TOKEN is missing. Add it to .env locally or to the Space Secrets."
             )
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=token, base_url=DUKE_GATEWAY_URL)
 
     try:
         response = client.responses.create(model=get_model_name(), input=prompt)
         return parse_variants(response.output_text)
     except openai.AuthenticationError:
-        raise RewriteError("The OpenAI API key is invalid or unauthorized.") from None
+        raise RewriteError(
+            "The Duke AI Gateway token is invalid or unauthorized."
+        ) from None
     except openai.RateLimitError:
         raise RewriteError(
-            "The OpenAI usage or rate limit was reached. Check usage and try again later."
+            "The Duke AI Gateway usage or rate limit was reached. "
+            "Check usage and try again later."
         ) from None
     except openai.APITimeoutError:
-        raise RewriteError("The OpenAI request timed out. Please try again.") from None
+        raise RewriteError(
+            "The Duke AI Gateway request timed out. Please try again."
+        ) from None
     except openai.APIConnectionError:
         raise RewriteError(
-            "Could not connect to OpenAI. Check the network and try again."
+            "Could not connect to Duke AI Gateway. Check the network and try again."
         ) from None
     except openai.APIError:
         raise RewriteError(
-            "OpenAI could not complete the request. Please try again later."
+            "Duke AI Gateway could not complete the request. Please try again later."
         ) from None
 
 

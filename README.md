@@ -27,7 +27,7 @@ The public GitHub and Hugging Face links will be added after the verified deploy
 - Ten emotional, everyday, professional, academic, and career styles.
 - Six optional audience choices, including colleagues, professors, and interviewers.
 - Chinese or English output regardless of the input language.
-- Three meaning-preserving alternatives from one OpenAI Responses API request.
+- Three meaning-preserving alternatives from one Duke AI Gateway request.
 - A standalone CLI and a polished Streamlit interface using the same API function.
 - Friendly validation, configuration, network, rate-limit, and API errors.
 
@@ -44,14 +44,17 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Open `.env` and replace the example API key with an active key:
+Create a token in the Duke AI Dashboard, then open `.env` and replace the
+example value with that token:
 
 ```text
-OPENAI_API_KEY=replace_with_your_key
-OPENAI_MODEL=gpt-5.6-luna
+LITELLM_TOKEN=replace_with_your_duke_gateway_token
+LITELLM_MODEL=GPT 4.1
 ```
 
-Never commit `.env` or share a real API key.
+The app uses Duke's OpenAI-compatible endpoint at
+`https://litellm.oit.duke.edu/v1`. `LITELLM_MODEL` is optional; when omitted,
+the app uses `GPT 4.1`. Never commit `.env` or share a real token.
 
 Start the application:
 
@@ -70,7 +73,7 @@ the numbered menus. The CLI prints the same three candidates as the web app.
 
 ## Test
 
-Automated tests use mocked OpenAI responses and do not spend API credits:
+Automated tests use mocked gateway responses and do not spend API credits:
 
 ```bash
 python -m pytest -v
@@ -78,8 +81,8 @@ python -m pytest -v
 
 ## Hugging Face Spaces
 
-Create an `OPENAI_API_KEY` Space Secret. Do not add it as a public Variable.
-`OPENAI_MODEL` is optional; without it, the app uses `gpt-5.6-luna`.
+Create a `LITELLM_TOKEN` Space Secret. Do not add it as a public Variable.
+`LITELLM_MODEL` is optional; without it, the app uses `GPT 4.1`.
 The Space repository must contain the same files and README as GitHub.
 
 ## Safety and Privacy
@@ -93,16 +96,16 @@ The Space repository must contain the same files and README as GitHub.
 
 ## Troubleshooting
 
-- **Missing key:** Confirm `.env` locally or `OPENAI_API_KEY` in Space Secrets.
-- **Unauthorized key:** Verify that the key is active and copied correctly.
-- **Rate or usage limit:** Check OpenAI usage and retry later.
+- **Missing token:** Confirm `.env` locally or `LITELLM_TOKEN` in Space Secrets.
+- **Unauthorized token:** Verify that the Duke Gateway token is active and copied correctly.
+- **Rate or usage limit:** Check the Duke AI Dashboard and retry later.
 - **Timeout or connection failure:** Check the network and retry.
 - **Unreadable response:** Generate again; the model response did not match the
   expected three-version structure.
 
 ## Project Files
 
-- `cli_demo.py`: validation, prompt, OpenAI call, response parsing, errors, and CLI.
+- `cli_demo.py`: validation, prompt, Duke Gateway call, response parsing, errors, and CLI.
 - `app.py`: Streamlit interface, result cards, and comparison table.
 - `tests/`: mocked API, CLI, validation, parsing, and Streamlit smoke tests.
 - `requirements.txt`: Python dependencies.

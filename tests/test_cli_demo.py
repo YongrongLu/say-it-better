@@ -194,12 +194,12 @@ def valid_api_response_variants():
 
 
 def test_get_model_name_uses_default(monkeypatch):
-    monkeypatch.delenv("OPENAI_MODEL", raising=False)
-    assert get_model_name() == "gpt-5.6-luna"
+    monkeypatch.delenv("LITELLM_MODEL", raising=False)
+    assert get_model_name() == "GPT 4.1"
 
 
 def test_get_model_name_allows_environment_override(monkeypatch):
-    monkeypatch.setenv("OPENAI_MODEL", "approved-model")
+    monkeypatch.setenv("LITELLM_MODEL", "approved-model")
     assert get_model_name() == "approved-model"
 
 
@@ -213,25 +213,46 @@ def test_rewrite_text_makes_one_request_and_returns_normalized_variants():
 
     assert client.responses.create.call_count == 1
     request = client.responses.create.call_args.kwargs
-    assert request["model"] == "gpt-5.6-luna"
+    assert request["model"] == "GPT 4.1"
     assert "Please move the deadline." in request["input"]
     assert [item["kind"] for item in result] == ["concise", "natural", "complete"]
 
 
-def test_rewrite_text_requires_key_when_constructing_real_client(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    with pytest.raises(RewriteError, match="OPENAI_API_KEY"):
+def test_rewrite_text_requires_duke_token_when_constructing_client(monkeypatch):
+    monkeypatch.delenv("LITELLM_TOKEN", raising=False)
+    with pytest.raises(RewriteError, match="LITELLM_TOKEN"):
         rewrite_text("Hello", "polite", "general", "en")
+
+
+def test_rewrite_text_constructs_client_for_duke_gateway(monkeypatch):
+    monkeypatch.setenv("LITELLM_TOKEN", "duke-test-token")
+    monkeypatch.delenv("LITELLM_MODEL", raising=False)
+    client = Mock()
+    client.responses.create.return_value = valid_api_response()
+    client_factory = Mock(return_value=client)
+    monkeypatch.setattr("cli_demo.OpenAI", client_factory)
+
+    result = rewrite_text("Hello", "polite", "general", "en")
+
+    client_factory.assert_called_once_with(
+        api_key="duke-test-token",
+        base_url="https://litellm.oit.duke.edu/v1",
+    )
+    assert [item["text"] for item in result] == [
+        "Move the deadline.",
+        "Could we move the deadline?",
+        "Could we consider moving the deadline?",
+    ]
 
 
 @pytest.mark.parametrize(
     ("api_error", "message"),
     [
-        (openai.AuthenticationError("bad key", response=Mock(), body=None), "API key"),
+        (openai.AuthenticationError("bad key", response=Mock(), body=None), "token"),
         (openai.RateLimitError("limited", response=Mock(), body=None), "limit"),
         (openai.APITimeoutError(request=Mock()), "timed out"),
         (openai.APIConnectionError(request=Mock()), "connect"),
-        (openai.APIError("server", request=Mock(), body=None), "OpenAI"),
+        (openai.APIError("server", request=Mock(), body=None), "Duke AI Gateway"),
     ],
 )
 def test_rewrite_text_translates_sdk_errors(api_error, message):
