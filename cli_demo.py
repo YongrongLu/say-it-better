@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import sys
+from collections.abc import Callable
 from typing import Any
 
 import openai
@@ -159,3 +161,50 @@ def rewrite_text(
         raise RewriteError(
             "OpenAI could not complete the request. Please try again later."
         ) from None
+
+
+def choose_option(
+    title: str,
+    options: dict[str, str],
+    input_fn: Callable[[str], str],
+    output_fn: Callable[[str], None],
+) -> str:
+    keys = list(options)
+    while True:
+        output_fn(f"\n{title}")
+        for index, key in enumerate(keys, start=1):
+            output_fn(f"{index}. {options[key]}")
+        raw = input_fn("Choice: ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(keys):
+            return keys[int(raw) - 1]
+        output_fn("Enter a number from the menu.")
+
+
+def run_cli(
+    input_fn: Callable[[str], str] = input,
+    output_fn: Callable[[str], None] = print,
+    rewriter: Callable[..., list[dict[str, str | int]]] = rewrite_text,
+) -> int:
+    output_fn("=== Say It Better / 嘴替工作室 ===")
+    text = input_fn("Enter the meaning you want to express: ")
+    style = choose_option("Choose a target style:", STYLE_LABELS, input_fn, output_fn)
+    audience = choose_option("Choose an audience:", AUDIENCE_LABELS, input_fn, output_fn)
+    language = choose_option(
+        "Choose an output language:", LANGUAGE_LABELS, input_fn, output_fn
+    )
+
+    try:
+        variants = rewriter(text, style, audience, language)
+    except RewriteError as exc:
+        output_fn(f"Error: {exc}")
+        return 1
+
+    output_fn("\n=== Rewrites ===")
+    for index, variant in enumerate(variants, start=1):
+        output_fn(f"\n{index}. {variant['label']} — {variant['note']}")
+        output_fn(str(variant["text"]))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(run_cli())

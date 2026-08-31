@@ -15,6 +15,7 @@ from cli_demo import (
     get_model_name,
     parse_variants,
     rewrite_text,
+    run_cli,
     validate_input,
 )
 
@@ -166,6 +167,32 @@ def valid_api_response():
     )
 
 
+def valid_api_response_variants():
+    return [
+        {
+            "kind": "concise",
+            "label": "Concise",
+            "text": "One",
+            "note": "Short",
+            "char_count": 3,
+        },
+        {
+            "kind": "natural",
+            "label": "Natural",
+            "text": "Two",
+            "note": "Natural",
+            "char_count": 3,
+        },
+        {
+            "kind": "complete",
+            "label": "Complete",
+            "text": "Three",
+            "note": "Full",
+            "char_count": 5,
+        },
+    ]
+
+
 def test_get_model_name_uses_default(monkeypatch):
     monkeypatch.delenv("OPENAI_MODEL", raising=False)
     assert get_model_name() == "gpt-5.6-luna"
@@ -212,3 +239,73 @@ def test_rewrite_text_translates_sdk_errors(api_error, message):
     client.responses.create.side_effect = api_error
     with pytest.raises(RewriteError, match=message):
         rewrite_text("Hello", "polite", "general", "en", client=client)
+
+
+def input_sequence(values):
+    iterator = iter(values)
+    return lambda _prompt="": next(iterator)
+
+
+def test_run_cli_prints_three_variants():
+    outputs = []
+    fake_variants = [
+        {
+            "kind": "concise",
+            "label": "简洁版",
+            "text": "版本一",
+            "note": "简短",
+            "char_count": 3,
+        },
+        {
+            "kind": "natural",
+            "label": "自然版",
+            "text": "版本二",
+            "note": "自然",
+            "char_count": 3,
+        },
+        {
+            "kind": "complete",
+            "label": "完整版",
+            "text": "版本三",
+            "note": "完整",
+            "char_count": 3,
+        },
+    ]
+    fake_rewriter = Mock(return_value=fake_variants)
+
+    status = run_cli(
+        input_fn=input_sequence(["原意", "4", "1", "1"]),
+        output_fn=outputs.append,
+        rewriter=fake_rewriter,
+    )
+
+    assert status == 0
+    assert fake_rewriter.call_args.args == ("原意", "polite", "general", "zh")
+    combined = "\n".join(outputs)
+    assert "简洁版" in combined
+    assert "版本一" in combined
+    assert "版本三" in combined
+
+
+def test_run_cli_reprompts_for_invalid_menu_number():
+    outputs = []
+    fake_rewriter = Mock(return_value=valid_api_response_variants())
+    status = run_cli(
+        input_fn=input_sequence(["Hello", "99", "4", "1", "2"]),
+        output_fn=outputs.append,
+        rewriter=fake_rewriter,
+    )
+    assert status == 0
+    assert "Enter a number from the menu." in outputs
+
+
+def test_run_cli_returns_nonzero_for_rewrite_error():
+    outputs = []
+    fake_rewriter = Mock(side_effect=RewriteError("The request failed."))
+    status = run_cli(
+        input_fn=input_sequence(["Hello", "4", "1", "2"]),
+        output_fn=outputs.append,
+        rewriter=fake_rewriter,
+    )
+    assert status == 1
+    assert outputs[-1] == "Error: The request failed."
