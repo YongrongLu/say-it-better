@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
+from typing import Any
+
+import openai
+from dotenv import load_dotenv
+from openai import OpenAI
 
 MAX_INPUT_CHARS = 2_000
 
@@ -32,6 +38,7 @@ LANGUAGE_LABELS = {
 }
 
 VARIANT_KINDS = ("concise", "natural", "complete")
+DEFAULT_MODEL = "gpt-5.6-luna"
 
 
 class RewriteError(Exception):
@@ -107,4 +114,48 @@ def parse_variants(output_text: str) -> list[dict[str, str | int]]:
     except (json.JSONDecodeError, KeyError, TypeError, ValueError, AttributeError):
         raise RewriteError(
             "The generated response could not be read. Please try again."
+        ) from None
+
+
+def get_model_name() -> str:
+    return os.getenv("OPENAI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+
+
+def rewrite_text(
+    text: str,
+    style: str,
+    audience: str,
+    language: str,
+    client: Any | None = None,
+) -> list[dict[str, str | int]]:
+    cleaned = validate_input(text, style, audience, language)
+    prompt = build_prompt(cleaned, style, audience, language)
+
+    if client is None:
+        load_dotenv()
+        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        if not api_key:
+            raise RewriteError(
+                "OPENAI_API_KEY is missing. Add it to .env locally or to the Space Secrets."
+            )
+        client = OpenAI(api_key=api_key)
+
+    try:
+        response = client.responses.create(model=get_model_name(), input=prompt)
+        return parse_variants(response.output_text)
+    except openai.AuthenticationError:
+        raise RewriteError("The OpenAI API key is invalid or unauthorized.") from None
+    except openai.RateLimitError:
+        raise RewriteError(
+            "The OpenAI usage or rate limit was reached. Check usage and try again later."
+        ) from None
+    except openai.APITimeoutError:
+        raise RewriteError("The OpenAI request timed out. Please try again.") from None
+    except openai.APIConnectionError:
+        raise RewriteError(
+            "Could not connect to OpenAI. Check the network and try again."
+        ) from None
+    except openai.APIError:
+        raise RewriteError(
+            "OpenAI could not complete the request. Please try again later."
         ) from None

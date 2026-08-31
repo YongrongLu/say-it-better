@@ -1,3 +1,8 @@
+import json
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+import openai
 import pytest
 
 from cli_demo import (
@@ -7,7 +12,9 @@ from cli_demo import (
     STYLE_LABELS,
     RewriteError,
     build_prompt,
+    get_model_name,
     parse_variants,
+    rewrite_text,
     validate_input,
 )
 
@@ -131,3 +138,77 @@ def test_parse_variants_normalizes_three_valid_candidates():
 def test_parse_variants_rejects_malformed_or_incomplete_output(output_text):
     with pytest.raises(RewriteError, match="could not be read"):
         parse_variants(output_text)
+
+
+def valid_api_response():
+    return SimpleNamespace(
+        output_text=json.dumps(
+            {
+                "variants": [
+                    {
+                        "label": "Concise",
+                        "text": "Move the deadline.",
+                        "note": "Direct",
+                    },
+                    {
+                        "label": "Natural",
+                        "text": "Could we move the deadline?",
+                        "note": "Natural",
+                    },
+                    {
+                        "label": "Complete",
+                        "text": "Could we consider moving the deadline?",
+                        "note": "Polished",
+                    },
+                ]
+            }
+        )
+    )
+
+
+def test_get_model_name_uses_default(monkeypatch):
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    assert get_model_name() == "gpt-5.6-luna"
+
+
+def test_get_model_name_allows_environment_override(monkeypatch):
+    monkeypatch.setenv("OPENAI_MODEL", "approved-model")
+    assert get_model_name() == "approved-model"
+
+
+def test_rewrite_text_makes_one_request_and_returns_normalized_variants():
+    client = Mock()
+    client.responses.create.return_value = valid_api_response()
+
+    result = rewrite_text(
+        "Please move the deadline.", "polite", "manager", "en", client=client
+    )
+
+    assert client.responses.create.call_count == 1
+    request = client.responses.create.call_args.kwargs
+    assert request["model"] == "gpt-5.6-luna"
+    assert "Please move the deadline." in request["input"]
+    assert [item["kind"] for item in result] == ["concise", "natural", "complete"]
+
+
+def test_rewrite_text_requires_key_when_constructing_real_client(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises(RewriteError, match="OPENAI_API_KEY"):
+        rewrite_text("Hello", "polite", "general", "en")
+
+
+@pytest.mark.parametrize(
+    ("api_error", "message"),
+    [
+        (openai.AuthenticationError("bad key", response=Mock(), body=None), "API key"),
+        (openai.RateLimitError("limited", response=Mock(), body=None), "limit"),
+        (openai.APITimeoutError(request=Mock()), "timed out"),
+        (openai.APIConnectionError(request=Mock()), "connect"),
+        (openai.APIError("server", request=Mock(), body=None), "OpenAI"),
+    ],
+)
+def test_rewrite_text_translates_sdk_errors(api_error, message):
+    client = Mock()
+    client.responses.create.side_effect = api_error
+    with pytest.raises(RewriteError, match=message):
+        rewrite_text("Hello", "polite", "general", "en", client=client)
