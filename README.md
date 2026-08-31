@@ -190,9 +190,6 @@ say-it-better/
 |-- .gitignore
 |-- assets/
 |   `-- app-demo.png
-|-- docs/
-|   |-- STREAMLIT_DEPLOYMENT_AND_SUBMISSION_GUIDE.md
-|   `-- VIDEO_DEMO_SCRIPT.md
 `-- tests/
     |-- test_app.py
     `-- test_cli_demo.py
@@ -206,11 +203,6 @@ say-it-better/
 - `requirements.txt`: runtime and test dependencies.
 - `.env.example`: safe environment-variable names and example values.
 - `assets/app-demo.png`: interface screenshot used in this README.
-
-## Additional Documentation
-
-- [Deployment and submission guide](docs/STREAMLIT_DEPLOYMENT_AND_SUBMISSION_GUIDE.md)
-- [60-120 second demo video script](docs/VIDEO_DEMO_SCRIPT.md)
 
 ## Safety and Privacy
 
